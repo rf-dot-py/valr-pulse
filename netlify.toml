@@ -2,3 +2,4 @@
   from = "/api/valr"
   to = "/.netlify/functions/valr"
   status = 200
+  force = true
