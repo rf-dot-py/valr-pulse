@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VALR Market Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #05080f;
+    --surface:  #090d16;
+    --card:     #0c1120;
+    --border:   #151d2e;
+    --border2:  #1e2a40;
+    --text:     #d4ddf0;
+    --muted:    #3d4f6e;
+    --muted2:   #263044;
+    --cyan:     #00d4ff;
+    --green:    #00e676;
+    --red:      #ff4757;
+    --gold:     #ffc107;
+    --mono:     'JetBrains Mono', monospace;
+    --display:  'Bebas Neue', sans-serif;
+    --body:     'Barlow', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* grid bg */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 10% 10%, #00d4ff0a 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 90%, #7c3aed08 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 24px 60px; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 0 20px;
+    border-bottom: 1px solid var(--border2);
+    margin-bottom: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-hex {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, #00d4ff18, #00d4ff06);
+    border: 1.5px solid var(--cyan);
+    clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--cyan); font-size: 18px;
+    box-shadow: 0 0 20px #00d4ff18;
+  }
+
+  .logo-text h1 {
+    font-family: var(--display);
+    font-size: 28px;
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+
+  .logo-text h1 span { color: var(--cyan); }
+
+  .logo-text p {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 4px;
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 2s infinite;
+  }
+
+  .live-dot.loading { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .live-dot.error   { background: var(--red);  box-shadow: 0 0 8px var(--red); }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  #last-update {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .btn-refresh {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 7px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .btn-refresh:hover { border-color: var(--cyan); color: var(--cyan); }
+  .btn-refresh:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── TICKER TAPE ── */
+  .tape-wrap {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border2);
+    border-top: 1px solid var(--border2);
+    overflow: hidden;
+    padding: 10px 0;
+    margin-bottom: 28px;
+    position: relative;
+  }
+
+  .tape-wrap::before, .tape-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 60px;
+    z-index: 2;
+  }
+  .tape-wrap::before { left: 0; background: linear-gradient(90deg, var(--surface), transparent); }
+  .tape-wrap::after  { right: 0; background: linear-gradient(-90deg, var(--surface), transparent); }
+
+  .tape-inner {
+    display: flex;
+    width: max-content;
+    animation: tape 35s linear infinite;
+  }
+
+  @keyframes tape { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+  .tape-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 24px;
+    border-right: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .tape-sym  { font-weight: 700; }
+  .tape-price { color: var(--text); }
+  .tape-chg.up   { color: var(--green); }
+  .tape-chg.down { color: var(--red); }
+
+  /* ── CONTROLS ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filter-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    margin-right: 4px;
+  }
+
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 6px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .filter-btn:hover  { border-color: var(--cyan); color: var(--cyan); }
+  .filter-btn.active {
+    background: var(--cyan);
+    border-color: var(--cyan);
+    color: var(--bg);
+    font-weight: 700;
+  }
+
+  .section-label {
+    font-family: var(--display);
+    font-size: 15px;
+    letter-spacing: 4px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    height: 1px;
+    width: 40px;
+    background: var(--border2);
+  }
+
+  /* ── GRID ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-top: 2px solid var(--accent, #00d4ff);
+    padding: 16px;
+    position: relative;
+    transition: transform .2s, box-shadow .2s;
+    animation: cardIn .4s ease both;
+    cursor: default;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,.5), 0 0 0 1px var(--accent, #00d4ff)33;
+  }
+
+  @keyframes cardIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  .card-rank {
+    position: absolute;
+    top: 10px; right: 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .coin-icon {
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--display);
+    font-size: 12px;
+    flex-shrink: 0;
+    letter-spacing: 0;
+  }
+
+  .coin-name { flex: 1; }
+
+  .coin-base {
+    font-family: var(--display);
+    font-size: 20px;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .coin-quote {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .card-change {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+  }
+
+  .card-change.up   { color: var(--green); background: #00e67615; }
+  .card-change.down { color: var(--red);   background: #ff475715; }
+
+  .card-price {
+    font-family: var(--display);
+    font-size: 26px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    line-height: 1;
+  }
+
+  /* range bar */
+  .range-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .range-lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    white-space: nowrap;
+    min-width: 60px;
+  }
+
+  .range-lbl:last-child { text-align: right; }
+
+  .range-track {
+    flex: 1;
+    height: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    position: relative;
+  }
+
+  .range-dot {
+    position: absolute;
+    top: 50%; transform: translate(-50%,-50%);
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    transition: left .5s ease;
+  }
+
+  /* stats */
+  .card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat-item {}
+
+  .stat-lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .stat-val.bid  { color: var(--green); }
+  .stat-val.ask  { color: var(--red); }
+
+  .card-spread {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 8px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* ── LOADING / ERROR ── */
+  .state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 260px;
+    gap: 16px;
+  }
+
+  .spinner {
+    width: 38px; height: 38px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--cyan);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  .state-msg {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 3px;
+  }
+
+  .error-box {
+    border: 1px solid #ff475730;
+    background: #ff47570a;
+    padding: 24px;
+    margin: 20px 0;
+  }
+
+  .error-msg {
+    color: var(--red);
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+
+  .btn-retry {
+    background: var(--cyan);
+    border: none;
+    color: var(--bg);
+    padding: 9px 24px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+
+  .btn-retry:hover { opacity: .85; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted2);
+    letter-spacing: 1px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:600px) {
+    .cards-grid { grid-template-columns: 1fr 1fr; }
+    .card-price { font-size: 18px; }
+    .header-right .btn-refresh { display: none; }
+    #last-update { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-hex">◈</div>
+      <div class="logo-text">
+        <h1><span>VALR</span>PULSE</h1>
+        <p>LIVE MARKET TERMINAL</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="live-dot" id="live-dot"></div>
+        <span id="live-status">CONNECTING</span>
+      </div>
+      <span id="last-update"></span>
+      <button class="btn-refresh" id="btn-refresh" onclick="load()">↻ REFRESH</button>
+    </div>
+  </header>
+
+  <!-- TAPE -->
+  <div class="tape-wrap" id="tape-wrap" style="display:none">
+    <div class="tape-inner" id="tape-inner"></div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="filter-group">
+      <span class="filter-label">MARKET</span>
+      <button class="filter-btn active" onclick="setFilter('ZAR')">ZAR</button>
+      <button class="filter-btn" onclick="setFilter('USDT')">USDT</button>
+      <button class="filter-btn" onclick="setFilter('BTC')">BTC</button>
+      <button class="filter-btn" onclick="setFilter('ETH')">ETH</button>
+    </div>
+    <div class="section-label" id="section-label">TOP 5 · ZAR PAIRS</div>
+  </div>
+
+  <!-- CARDS -->
+  <div id="content">
+    <div class="state-box">
+      <div class="spinner"></div>
+      <div class="state-msg">FETCHING LIVE DATA…</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>SOURCE: api.valr.com/v1/public/marketsummary</span>
+    <span>AUTO-REFRESH EVERY 20s</span>
+  </footer>
+
+</div>
+
+<script>
+// ── config ────────────────────────────────────────────────────────────────────
+const API = '/api/valr';
+const REFRESH_MS = 20000;
+
+const COIN_COLORS = {
+  BTC:'#F7931A',ETH:'#627EEA',SOL:'#9945FF',XRP:'#346AA9',
+  USDT:'#26A17B',USDC:'#2775CA',ADA:'#0033AD',DOGE:'#C2A633',
+  AVAX:'#E84142',LINK:'#2A5ADA',MATIC:'#8247E5',LTC:'#A8A9AD',
+  BCH:'#8DC351',BNB:'#F3BA2F',DOT:'#E6007A',SHIB:'#FF6B00',
+};
+
+let currentFilter = 'ZAR';
+let allData = [];
+let refreshTimer = null;
+
+// ── utils ─────────────────────────────────────────────────────────────────────
+function getColor(sym) {
+  for (const [k,v] of Object.entries(COIN_COLORS))
+    if (sym.startsWith(k)) return v;
+  return '#00d4ff';
+}
+
+function getBase(pair) {
+  for (const q of ['USDT','USDC','ZAR','BTC','ETH'])
+    if (pair.endsWith(q)) return pair.slice(0,-q.length);
+  return pair.slice(0,3);
+}
+
+function getQuote(pair) {
+  for (const q of ['USDT','USDC','ZAR','BTC','ETH'])
+    if (pair.endsWith(q)) return q;
+  return pair.slice(-3);
+}
+
+function fmtPrice(n, quote) {
+  if (!n || isNaN(n)) return '—';
+  if (quote === 'ZAR') {
+    return 'R ' + new Intl.NumberFormat('en',{
+      maximumFractionDigits: n >= 1000 ? 0 : n >= 1 ? 2 : 6
+    }).format(n);
+  }
+  return new Intl.NumberFormat('en',{maximumFractionDigits:n<1?8:n<100?4:2}).format(n);
+}
+
+function fmtVol(n) {
+  if (n >= 1e9) return 'R' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return 'R' + (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return 'R' + (n/1e3).toFixed(1) + 'K';
+  return 'R' + n.toFixed(2);
+}
+
+function fmtNum(n, d=2) {
+  return new Intl.NumberFormat('en',{maximumFractionDigits:d,minimumFractionDigits:d}).format(n);
+}
+
+// ── state UI ──────────────────────────────────────────────────────────────────
+function setStatus(state) {
+  const dot = document.getElementById('live-dot');
+  const lbl = document.getElementById('live-status');
+  const btn = document.getElementById('btn-refresh');
+  dot.className = 'live-dot ' + state;
+  lbl.textContent = state === 'loading' ? 'FETCHING…' : state === 'error' ? 'ERROR' : 'LIVE';
+  btn.disabled = state === 'loading';
+  btn.textContent = state === 'loading' ? 'LOADING…' : '↻ REFRESH';
+}
+
+// ── filter ────────────────────────────────────────────────────────────────────
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === f);
+  });
+  document.getElementById('section-label').textContent = `TOP 5 · ${f} PAIRS`;
+  renderCards(allData);
+}
+
+// ── tape ──────────────────────────────────────────────────────────────────────
+function renderTape(data) {
+  const top15 = data
+    .filter(d => d.currencyPairSymbol.endsWith(currentFilter))
+    .sort((a,b) => parseFloat(b.quoteVolume||0) - parseFloat(a.quoteVolume||0))
+    .slice(0,15);
+
+  const tapeWrap = document.getElementById('tape-wrap');
+  const tapeInner = document.getElementById('tape-inner');
+  if (!top15.length) { tapeWrap.style.display='none'; return; }
+
+  const makeItems = (arr) => arr.map(d => {
+    const base = getBase(d.currencyPairSymbol);
+    const chg  = parseFloat(d.changeFromPrevious||0);
+    const price= parseFloat(d.lastTradedPrice||0);
+    const color= getColor(d.currencyPairSymbol);
+    const q    = getQuote(d.currencyPairSymbol);
+    return `<div class="tape-item">
+      <span class="tape-sym" style="color:${color}">${base}</span>
+      <span class="tape-price">${fmtPrice(price,q)}</span>
+      <span class="tape-chg ${chg>=0?'up':'down'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span>
+    </div>`;
+  }).join('');
+
+  tapeInner.innerHTML = makeItems(top15) + makeItems(top15); // doubled for seamless loop
+  tapeWrap.style.display = 'block';
+}
+
+// ── cards ─────────────────────────────────────────────────────────────────────
+function renderCards(data) {
+  const filtered = data
+    .filter(d => d.currencyPairSymbol.endsWith(currentFilter))
+    .sort((a,b) => parseFloat(b.quoteVolume||0) - parseFloat(a.quoteVolume||0))
+    .slice(0,5);
+
+  const content = document.getElementById('content');
+
+  if (!filtered.length) {
+    content.innerHTML = `<div class="state-box"><div class="state-msg">NO PAIRS FOUND FOR ${currentFilter}</div></div>`;
+    return;
+  }
+
+  content.innerHTML = `<div class="cards-grid">${filtered.map((d,i) => cardHTML(d, i+1)).join('')}</div>`;
+}
+
+function cardHTML(d, rank) {
+  const pair  = d.currencyPairSymbol;
+  const base  = getBase(pair);
+  const quote = getQuote(pair);
+  const color = getColor(pair);
+  const price = parseFloat(d.lastTradedPrice)||0;
+  const high  = parseFloat(d.highPrice)||0;
+  const low   = parseFloat(d.lowPrice)||0;
+  const bid   = parseFloat(d.bidPrice)||0;
+  const ask   = parseFloat(d.askPrice)||0;
+  const vol   = parseFloat(d.quoteVolume)||0;
+  const baseV = parseFloat(d.baseVolume)||0;
+  const chg   = parseFloat(d.changeFromPrevious)||0;
+  const isUp  = chg >= 0;
+  const range = high - low;
+  const pos   = range > 0 ? Math.min(100, Math.max(0, ((price-low)/range)*100)) : 50;
+  const spread= bid > 0 ? ((ask-bid)/bid*100).toFixed(4) : '—';
+  const delay = rank * 0.07;
+
+  return `
+  <div class="card" style="--accent:${color}; animation-delay:${delay}s">
+    <div class="card-rank">#${rank}</div>
+    <div class="card-header">
+      <div class="coin-icon" style="background:${color}18;border:1.5px solid ${color}44;color:${color}">
+        ${base.slice(0,2)}
+      </div>
+      <div class="coin-name">
+        <div class="coin-base">${base}</div>
+        <div class="coin-quote">/ ${quote}</div>
+      </div>
+      <div class="card-change ${isUp?'up':'down'}">
+        ${isUp?'▲':'▼'} ${Math.abs(chg).toFixed(2)}%
+      </div>
+    </div>
+
+    <div class="card-price">${fmtPrice(price, quote)}</div>
+
+    <div class="range-bar">
+      <span class="range-lbl">L ${fmtPrice(low, quote)}</span>
+      <div class="range-track">
+        <div class="range-dot" style="left:${pos}%;background:${color};box-shadow:0 0 8px ${color}"></div>
+      </div>
+      <span class="range-lbl">H ${fmtPrice(high, quote)}</span>
+    </div>
+
+    <div class="card-stats">
+      <div class="stat-item">
+        <div class="stat-lbl">BID</div>
+        <div class="stat-val bid">${fmtPrice(bid, quote)}</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-lbl">ASK</div>
+        <div class="stat-val ask">${fmtPrice(ask, quote)}</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-lbl">BASE VOL</div>
+        <div class="stat-val">${fmtNum(baseV,2)} ${base}</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-lbl">QUOTE VOL</div>
+        <div class="stat-val">${fmtVol(vol)}</div>
+      </div>
+    </div>
+
+    <div class="card-spread">
+      <span>SPREAD</span>
+      <span>${spread}%</span>
+    </div>
+  </div>`;
+}
+
+// ── fetch ─────────────────────────────────────────────────────────────────────
+async function load() {
+  setStatus('loading');
+  try {
+    const res = await fetch(API);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    allData = await res.json();
+
+    renderTape(allData);
+    renderCards(allData);
+
+    setStatus('live');
+    document.getElementById('last-update').textContent =
+      'UPDATED ' + new Date().toLocaleTimeString();
+
+  } catch(e) {
+    setStatus('error');
+    document.getElementById('content').innerHTML = `
+      <div class="error-box">
+        <div class="error-msg">⚠ ${e.message}</div>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.8;margin-bottom:16px">
+          Open this file directly in Chrome (not via a server).<br>
+          Or check: chrome://flags → disable CORS restrictions for local files.
+        </p>
+        <button class="btn-retry" onclick="load()">↻ RETRY</button>
+      </div>`;
+  }
+}
+
+// ── init ──────────────────────────────────────────────────────────────────────
+load();
+refreshTimer = setInterval(load, REFRESH_MS);
+</script>
+</body>
+</html>

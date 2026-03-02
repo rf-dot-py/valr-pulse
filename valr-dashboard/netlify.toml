@@ -1,0 +1,4 @@
+[[redirects]]
+  from = "/api/valr"
+  to = "/.netlify/functions/valr"
+  status = 200
