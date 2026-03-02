@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VALR Pulse — Market Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #0e1117;
+    --surface:   #161b26;
+    --surface2:  #1c2333;
+    --border:    #2a3347;
+    --border2:   #334060;
+    --text:      #f0f2f5;
+    --text2:     #8a94a8;
+    --text3:     #4d5a73;
+    --green:     #00c076;
+    --green-bg:  #00c07614;
+    --red:       #f84960;
+    --red-bg:    #f8496014;
+    --gold:      #f0b429;
+    --font:      'Inter', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1280px; margin: 0 auto; padding: 0 20px 48px; }
+
+  /* TOPBAR */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+  }
+
+  .logo { display: flex; align-items: center; gap: 10px; }
+
+  .logo-icon {
+    width: 32px; height: 32px; background: var(--green); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: #fff;
+  }
+
+  .logo-name { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-name span { color: var(--green); }
+  .logo-tag { font-size: 11px; color: var(--text3); margin-left: 6px; }
+
+  .topbar-right { display: flex; align-items: center; gap: 14px; }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 5px 12px;
+    font-size: 12px; color: var(--text2);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 6px var(--green);
+  }
+  .status-dot.loading { background: var(--gold); box-shadow: 0 0 6px var(--gold); animation: blink 1s infinite; }
+  .status-dot.error   { background: var(--red);  box-shadow: 0 0 6px var(--red); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  #last-update { font-size: 12px; color: var(--text3); }
+
+  .btn-refresh {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text2);
+    padding: 7px 14px; font-family: var(--font);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .15s;
+  }
+  .btn-refresh:hover:not(:disabled) { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+  .btn-refresh:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* TAPE */
+  .tape {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    margin-bottom: 24px; padding: 10px 0;
+    position: relative; display: none;
+  }
+  .tape::before, .tape::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 60px; z-index: 2;
+  }
+  .tape::before { left: 0; background: linear-gradient(90deg, var(--surface), transparent); }
+  .tape::after  { right: 0; background: linear-gradient(-90deg, var(--surface), transparent); }
+  .tape-track { display: flex; width: max-content; animation: scroll 40s linear infinite; }
+  @keyframes scroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  .tape-item {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 0 20px; border-right: 1px solid var(--border);
+    font-size: 12px; white-space: nowrap;
+  }
+  .tape-sym   { font-weight: 600; }
+  .tape-price { color: var(--text2); }
+  .tape-up    { color: var(--green); font-weight: 500; }
+  .tape-down  { color: var(--red);   font-weight: 500; }
+
+  /* CONTROLS */
+  .controls {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
+  }
+
+  .page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .page-title span { color: var(--text2); font-weight: 400; font-size: 14px; margin-left: 8px; }
+
+  .market-tabs {
+    display: flex; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 3px; gap: 2px;
+  }
+  .tab {
+    background: transparent; border: none; border-radius: 6px;
+    color: var(--text2); padding: 6px 16px;
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .15s;
+  }
+  .tab:hover  { color: var(--text); background: var(--surface2); }
+  .tab.active { background: var(--green); color: #fff; font-weight: 600; }
+
+  /* TABLE */
+  .table-header {
+    display: grid;
+    grid-template-columns: 2.2fr 1.4fr 0.9fr 1fr 1fr 1.1fr 1fr;
+    padding: 8px 16px;
+    font-size: 11px; font-weight: 600;
+    color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+  }
+  .th-r { text-align: right; }
+
+  .pair-row {
+    display: grid;
+    grid-template-columns: 2.2fr 1.4fr 0.9fr 1fr 1fr 1.1fr 1fr;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    transition: border-color .15s, background .15s;
+    animation: rowIn .35s ease both;
+  }
+  .pair-row:hover { border-color: var(--border2); background: var(--surface2); }
+  @keyframes rowIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  .col-pair { display: flex; align-items: center; gap: 12px; }
+  .rank { font-size: 11px; font-weight: 600; color: var(--text3); width: 16px; }
+
+  .coin-av {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+
+  .pair-base  { font-size: 15px; font-weight: 600; }
+  .pair-full  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .col-price { font-size: 15px; font-weight: 600; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 9px; border-radius: 6px; width: fit-content;
+  }
+  .badge.up   { color: var(--green); background: var(--green-bg); }
+  .badge.down { color: var(--red);   background: var(--red-bg); }
+
+  .col-r { text-align: right; font-size: 13px; color: var(--text2); font-weight: 500; }
+  .col-r .sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .col-bid { text-align: right; font-size: 13px; font-weight: 500; color: var(--green); }
+  .col-ask { text-align: right; font-size: 13px; font-weight: 500; color: var(--red); }
+
+  .range-col { }
+  .range-track {
+    width: 100%; height: 3px;
+    background: var(--border); border-radius: 2px; position: relative;
+    margin-bottom: 4px;
+  }
+  .range-dot {
+    position: absolute; top: 50%; transform: translate(-50%,-50%);
+    width: 7px; height: 7px; border-radius: 50%;
+    transition: left .5s ease;
+  }
+  .range-lbl {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--text3);
+  }
+
+  /* STATES */
+  .state-box {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 80px 20px; gap: 14px;
+  }
+  .spinner {
+    width: 30px; height: 30px;
+    border: 2px solid var(--border); border-top-color: var(--green);
+    border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .state-text { color: var(--text2); font-size: 14px; }
+
+  .error-card {
+    background: var(--surface); border: 1px solid var(--red);
+    border-radius: 10px; padding: 24px;
+  }
+  .error-title { color: var(--red); font-weight: 600; margin-bottom: 6px; font-size: 15px; }
+  .error-body  { color: var(--text2); font-size: 13px; line-height: 1.6; margin-bottom: 16px; font-family: monospace; }
+  .btn-retry {
+    background: var(--green); border: none; border-radius: 8px;
+    color: #fff; padding: 9px 20px;
+    font-family: var(--font); font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+
+  footer {
+    margin-top: 32px; padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text3);
+    flex-wrap: wrap; gap: 8px;
+  }
+
+  @media(max-width:900px) {
+    .table-header { display: none !important; }
+    .pair-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .col-bid, .col-ask, .range-col { display: none; }
+  }
+  @media(max-width:500px) {
+    .topbar { flex-wrap: wrap; gap: 10px; }
+    #last-update { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">VP</div>
+      <div>
+        <span class="logo-name"><span>VALR</span>Pulse</span>
+        <span class="logo-tag">Market Overview</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="last-update"></span>
+      <div class="status-pill">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-label">Connecting</span>
+      </div>
+      <button class="btn-refresh" id="btn-refresh" onclick="load()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="tape" id="tape">
+    <div class="tape-track" id="tape-track"></div>
+  </div>
+
+  <div class="controls">
+    <div class="page-title">Top Pairs <span id="title-sub">by ZAR volume</span></div>
+    <div class="market-tabs">
+      <button class="tab active" onclick="setFilter('ZAR',this)">ZAR</button>
+      <button class="tab" onclick="setFilter('USDT',this)">USDT</button>
+      <button class="tab" onclick="setFilter('BTC',this)">BTC</button>
+      <button class="tab" onclick="setFilter('ETH',this)">ETH</button>
+    </div>
+  </div>
+
+  <div class="table-header" id="table-header" style="display:none">
+    <div>Pair</div>
+    <div>Last Price</div>
+    <div>24h Change</div>
+    <div class="th-r">Bid</div>
+    <div class="th-r">Ask</div>
+    <div class="th-r">24h Volume</div>
+    <div class="th-r">24h Range</div>
+  </div>
+
+  <div id="content">
+    <div class="state-box">
+      <div class="spinner"></div>
+      <div class="state-text">Loading market data…</div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Data: api.valr.com · Auto-refresh every 20s</span>
+    <span id="pair-count"></span>
+  </footer>
+
+</div>
+<script>
+const API = '/.netlify/functions/valr';
+const REFRESH_MS = 20000;
+
+const COIN_COLORS = {
+  BTC:'#F7931A',ETH:'#627EEA',SOL:'#9945FF',XRP:'#346AA9',
+  USDT:'#26A17B',USDC:'#2775CA',ADA:'#0033AD',DOGE:'#C2A633',
+  AVAX:'#E84142',LINK:'#2A5ADA',MATIC:'#8247E5',LTC:'#9EA3A8',
+  BCH:'#8DC351',BNB:'#F3BA2F',DOT:'#E6007A',SHIB:'#E05C2B',
+};
+
+let currentFilter = 'ZAR', allData = [];
+
+const getColor = s => { for(const[k,v] of Object.entries(COIN_COLORS)) if(s.startsWith(k)) return v; return '#00c076'; };
+const getBase  = p => { for(const q of ['USDT','USDC','ZAR','BTC','ETH']) if(p.endsWith(q)) return p.slice(0,-q.length); return p.slice(0,3); };
+const getQuote = p => { for(const q of ['USDT','USDC','ZAR','BTC','ETH']) if(p.endsWith(q)) return q; return p.slice(-3); };
+
+function fmtPrice(n, quote) {
+  if (!n||isNaN(n)) return '—';
+  if (quote==='ZAR') {
+    if (n>=100000) return 'R '+new Intl.NumberFormat('en',{maximumFractionDigits:0}).format(n);
+    if (n>=1)      return 'R '+new Intl.NumberFormat('en',{maximumFractionDigits:2,minimumFractionDigits:2}).format(n);
+    return 'R '+new Intl.NumberFormat('en',{maximumFractionDigits:6}).format(n);
+  }
+  return new Intl.NumberFormat('en',{maximumFractionDigits:n<1?8:n<100?4:2}).format(n);
+}
+
+function fmtVol(n, quote) {
+  const p = quote==='ZAR'?'R':'';
+  if (n>=1e9) return p+(n/1e9).toFixed(2)+'B';
+  if (n>=1e6) return p+(n/1e6).toFixed(2)+'M';
+  if (n>=1e3) return p+(n/1e3).toFixed(1)+'K';
+  return p+n.toFixed(2);
+}
+
+function setStatus(s) {
+  document.getElementById('status-dot').className = 'status-dot'+(s==='live'?'':' '+s);
+  document.getElementById('status-label').textContent = s==='loading'?'Fetching…':s==='error'?'Error':'Live';
+  document.getElementById('btn-refresh').disabled = s==='loading';
+}
+
+function setFilter(f,el) {
+  currentFilter = f;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('title-sub').textContent = 'by '+f+' volume';
+  renderTape(allData); renderRows(allData);
+}
+
+function renderTape(data) {
+  const top = data.filter(d=>d.currencyPairSymbol.endsWith(currentFilter))
+    .sort((a,b)=>parseFloat(b.quoteVolume||0)-parseFloat(a.quoteVolume||0)).slice(0,15);
+  if (!top.length) return;
+  const make = arr => arr.map(d => {
+    const base=getBase(d.currencyPairSymbol), quote=getQuote(d.currencyPairSymbol);
+    const chg=parseFloat(d.changeFromPrevious||0), price=parseFloat(d.lastTradedPrice||0);
+    const color=getColor(d.currencyPairSymbol);
+    return `<div class="tape-item"><span class="tape-sym" style="color:${color}">${base}</span><span class="tape-price">${fmtPrice(price,quote)}</span><span class="${chg>=0?'tape-up':'tape-down'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span></div>`;
+  }).join('');
+  document.getElementById('tape-track').innerHTML = make(top)+make(top);
+  document.getElementById('tape').style.display = 'block';
+}
+
+function renderRows(data) {
+  const filtered = data.filter(d=>d.currencyPairSymbol.endsWith(currentFilter))
+    .sort((a,b)=>parseFloat(b.quoteVolume||0)-parseFloat(a.quoteVolume||0)).slice(0,5);
+  const hdr = document.getElementById('table-header');
+  const cnt = document.getElementById('content');
+  if (!filtered.length) { hdr.style.display='none'; cnt.innerHTML=`<div class="state-box"><div class="state-text">No ${currentFilter} pairs found</div></div>`; return; }
+  hdr.style.display='grid';
+  cnt.innerHTML = filtered.map((d,i)=>rowHTML(d,i+1)).join('');
+  const total = data.filter(x=>x.currencyPairSymbol.endsWith(currentFilter)).length;
+  document.getElementById('pair-count').textContent = `Showing top 5 of ${total} ${currentFilter} pairs`;
+}
+
+function rowHTML(d, rank) {
+  const pair=d.currencyPairSymbol, base=getBase(pair), quote=getQuote(pair), color=getColor(pair);
+  const price=parseFloat(d.lastTradedPrice)||0, high=parseFloat(d.highPrice)||0, low=parseFloat(d.lowPrice)||0;
+  const bid=parseFloat(d.bidPrice)||0, ask=parseFloat(d.askPrice)||0;
+  const vol=parseFloat(d.quoteVolume)||0, baseV=parseFloat(d.baseVolume)||0;
+  const chg=parseFloat(d.changeFromPrevious)||0, isUp=chg>=0;
+  const pos=high>low?Math.min(100,Math.max(0,((price-low)/(high-low))*100)):50;
+
+  return `<div class="pair-row" style="animation-delay:${rank*0.07}s">
+    <div class="col-pair">
+      <span class="rank">${rank}</span>
+      <div class="coin-av" style="background:${color}20;color:${color}">${base.slice(0,2)}</div>
+      <div>
+        <div class="pair-base">${base} <span style="color:var(--text3);font-weight:400;font-size:12px">/ ${quote}</span></div>
+        <div class="pair-full">${pair}</div>
+      </div>
+    </div>
+    <div class="col-price">${fmtPrice(price,quote)}</div>
+    <div><div class="badge ${isUp?'up':'down'}">${isUp?'▲':'▼'} ${Math.abs(chg).toFixed(2)}%</div></div>
+    <div class="col-bid">${fmtPrice(bid,quote)}</div>
+    <div class="col-ask">${fmtPrice(ask,quote)}</div>
+    <div class="col-r">${fmtVol(vol,quote)}<div class="sub">${new Intl.NumberFormat('en',{maximumFractionDigits:2}).format(baseV)} ${base}</div></div>
+    <div class="range-col">
+      <div class="range-track"><div class="range-dot" style="left:${pos}%;background:${color};box-shadow:0 0 5px ${color}88"></div></div>
+      <div class="range-lbl"><span>${fmtPrice(low,quote)}</span><span>${fmtPrice(high,quote)}</span></div>
+    </div>
+  </div>`;
+}
+
+async function load() {
+  setStatus('loading');
+  try {
+    const res = await fetch(API);
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    let raw = Array.isArray(json)?json:(json.data||json.result||Object.values(json));
+    allData = raw
+      .filter(d=>d&&(typeof d.currencyPairSymbol==='string'||typeof d.currencyPair==='string'))
+      .map(d=>({...d,
+        currencyPairSymbol: d.currencyPairSymbol||d.currencyPair||'',
+        changeFromPrevious: d.changeFromPrevious||d.changeFromPreviousClose||d.percentageChange||'0',
+        highPrice:  d.highPrice||d.high||d.highTradedPrice||'0',
+        lowPrice:   d.lowPrice||d.low||d.lowTradedPrice||'0',
+        quoteVolume:d.quoteVolume||d.quotedVolume||'0',
+      }));
+    if (!allData.length) throw new Error('No valid pairs returned');
+    renderTape(allData); renderRows(allData);
+    setStatus('live');
+    document.getElementById('last-update').textContent = 'Updated '+new Date().toLocaleTimeString();
+  } catch(e) {
+    setStatus('error');
+    document.getElementById('table-header').style.display='none';
+    document.getElementById('content').innerHTML=`<div class="error-card"><div class="error-title">Failed to load</div><div class="error-body">${e.message}</div><button class="btn-retry" onclick="load()">Try again</button></div>`;
+  }
+}
+
+load();
+setInterval(load, REFRESH_MS);
+</script>
+</body>
+</html>
